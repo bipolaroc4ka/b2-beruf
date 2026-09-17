@@ -1,14 +1,24 @@
 const SUPABASE_SCRIPT_URL =
     "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
+
 let supabaseClient = null;
 
 let presentations = [];
+
 let currentPresentationIndex = -1;
+
 let currentFilter = "Alle";
 
+let selectedParticipant = null;
+
+let participantFilter = "Alle";
+
+
 let timerInterval = null;
+
 let timerSeconds = 180;
+
 let timerRunning = false;
 
 
@@ -24,20 +34,29 @@ async function init() {
         !window.APP_CONFIG.SUPABASE_ANON_KEY ||
         window.APP_CONFIG.SUPABASE_URL.includes("PASTE_")
     ) {
-        showToast("Supabase ist noch nicht konfiguriert.");
+
+        showToast(
+            "Supabase ist noch nicht konfiguriert."
+        );
+
         return;
     }
+
 
     try {
 
         await loadSupabase();
 
-        supabaseClient = window.supabase.createClient(
-            window.APP_CONFIG.SUPABASE_URL,
-            window.APP_CONFIG.SUPABASE_ANON_KEY
-        );
+
+        supabaseClient =
+            window.supabase.createClient(
+                window.APP_CONFIG.SUPABASE_URL,
+                window.APP_CONFIG.SUPABASE_ANON_KEY
+            );
+
 
         await loadPresentations();
+
 
         setupEvents();
 
@@ -61,21 +80,34 @@ function loadSupabase() {
     return new Promise((resolve, reject) => {
 
         if (window.supabase) {
+
             resolve();
+
             return;
         }
 
-        const script = document.createElement("script");
 
-        script.src = SUPABASE_SCRIPT_URL;
+        const script =
+            document.createElement("script");
 
-        script.onload = resolve;
+
+        script.src =
+            SUPABASE_SCRIPT_URL;
+
+
+        script.onload =
+            resolve;
+
 
         script.onerror = () => {
+
             reject(
-                new Error("Supabase konnte nicht geladen werden.")
+                new Error(
+                    "Supabase konnte nicht geladen werden."
+                )
             );
         };
+
 
         document.head.appendChild(script);
     });
@@ -94,43 +126,70 @@ async function loadPresentations() {
             ascending: false
         });
 
+
     if (error) {
+
         console.error(error);
-        showToast("Präsentationen konnten nicht geladen werden.");
+
+        showToast(
+            "Präsentationen konnten nicht geladen werden."
+        );
+
         return;
     }
 
-    presentations = data || [];
+
+    presentations =
+        data || [];
+
 
     renderEverything();
 }
 
 
 /* =========================================
-   RENDER
+   RENDER EVERYTHING
 ========================================= */
 
 function renderEverything() {
 
     renderStats();
+
     renderParticipants();
+
     renderPresentations();
+
     renderFilters();
+
     renderHeroProgress();
+
+    if (selectedParticipant) {
+        renderParticipantTopics();
+    }
 }
 
 
+/* =========================================
+   STATS
+========================================= */
+
 function renderStats() {
 
-    const total = presentations.length;
+    const total =
+        presentations.length;
 
-    const finished = presentations.filter(
-        item => item.status === "Fertig"
-    ).length;
 
-    const inProgress = presentations.filter(
-        item => item.status === "In Arbeit"
-    ).length;
+    const finished =
+        presentations.filter(
+            item => item.status === "Fertig"
+        ).length;
+
+
+    const inProgress =
+        presentations.filter(
+            item => item.status === "In Arbeit"
+        ).length;
+
 
     const participants = [
         ...new Set(
@@ -141,54 +200,96 @@ function renderStats() {
     ];
 
 
-    document.getElementById("statPresentations").textContent =
+    document.getElementById(
+        "statPresentations"
+    ).textContent =
         total;
 
-    document.getElementById("statParticipants").textContent =
+
+    document.getElementById(
+        "statParticipants"
+    ).textContent =
         participants.length;
 
-    document.getElementById("statFinished").textContent =
+
+    document.getElementById(
+        "statFinished"
+    ).textContent =
         finished;
 
-    document.getElementById("statProgress").textContent =
+
+    document.getElementById(
+        "statProgress"
+    ).textContent =
         inProgress;
 }
 
 
+/* =========================================
+   HERO PROGRESS
+========================================= */
+
 function renderHeroProgress() {
 
-    const total = presentations.length;
-
-    const finished = presentations.filter(
-        item => item.status === "Fertig"
-    ).length;
-
-    const percent = total
-        ? Math.round((finished / total) * 100)
-        : 0;
+    const total =
+        presentations.length;
 
 
-    document.getElementById("heroProgress").textContent =
+    const finished =
+        presentations.filter(
+            item => item.status === "Fertig"
+        ).length;
+
+
+    const percent =
+        total
+            ? Math.round(
+                (finished / total) * 100
+            )
+            : 0;
+
+
+    document.getElementById(
+        "heroProgress"
+    ).textContent =
         `${percent}%`;
 
-    document.getElementById("progressCircleText").textContent =
+
+    document.getElementById(
+        "progressCircleText"
+    ).textContent =
         `${percent}%`;
 
-    document.getElementById("heroProgressBar").style.width =
+
+    document.getElementById(
+        "heroProgressBar"
+    ).style.width =
         `${percent}%`;
 
-    document.getElementById("heroFinished").textContent =
+
+    document.getElementById(
+        "heroFinished"
+    ).textContent =
         `${finished} von ${total} Themen fertig`;
 }
 
 
+/* =========================================
+   PARTICIPANTS
+========================================= */
+
 function renderParticipants() {
 
     const container =
-        document.getElementById("participantsGrid");
+        document.getElementById(
+            "participantsGrid"
+        );
+
 
     if (!presentations.length) {
+
         container.innerHTML = "";
+
         return;
     }
 
@@ -200,14 +301,18 @@ function renderParticipants() {
 
         if (!item.name) return;
 
+
         if (!people[item.name]) {
+
             people[item.name] = {
                 total: 0,
                 finished: 0
             };
         }
 
+
         people[item.name].total++;
+
 
         if (item.status === "Fertig") {
             people[item.name].finished++;
@@ -229,16 +334,22 @@ function renderParticipants() {
         sortedPeople
             .map(([name, stats]) => {
 
-                const percent = stats.total
-                    ? Math.round(
-                        stats.finished /
-                        stats.total *
-                        100
-                    )
-                    : 0;
+                const percent =
+                    stats.total
+                        ? Math.round(
+                            stats.finished /
+                            stats.total *
+                            100
+                        )
+                        : 0;
+
 
                 return `
-                    <div class="person-card">
+                    <button
+                        class="person-card"
+                        type="button"
+                        data-participant="${escapeHtml(name)}"
+                    >
 
                         <div class="person-top">
 
@@ -247,6 +358,7 @@ function renderParticipants() {
                             </div>
 
                             <div>
+
                                 <div class="person-name">
                                     ${escapeHtml(name)}
                                 </div>
@@ -255,41 +367,298 @@ function renderParticipants() {
                                     ${stats.total}
                                     ${stats.total === 1 ? "Thema" : "Themen"}
                                 </div>
+
                             </div>
 
                         </div>
+
 
                         <div class="person-progress">
 
                             <div class="person-progress-top">
-                                <span>Fortschritt</span>
-                                <span>${percent}%</span>
+
+                                <span>
+                                    Fortschritt
+                                </span>
+
+                                <span>
+                                    ${percent}%
+                                </span>
+
                             </div>
 
+
                             <div class="mini-progress">
+
                                 <div
                                     class="mini-progress-fill"
                                     style="width:${percent}%"
                                 ></div>
+
                             </div>
 
                         </div>
 
-                    </div>
+                    </button>
                 `;
+
             })
             .join("");
+
+
+    container
+        .querySelectorAll("[data-participant]")
+        .forEach(card => {
+
+            card.addEventListener(
+                "click",
+                () => {
+
+                    showParticipantTopics(
+                        card.dataset.participant
+                    );
+
+                }
+            );
+
+        });
 }
 
 
+/* =========================================
+   PARTICIPANT TOPICS
+========================================= */
+
+function showParticipantTopics(name) {
+
+    selectedParticipant = name;
+
+    participantFilter = "Alle";
+
+
+    const view =
+        document.getElementById(
+            "participantTopics"
+        );
+
+
+    const title =
+        document.getElementById(
+            "participantTopicsTitle"
+        );
+
+
+    const subtitle =
+        document.getElementById(
+            "participantTopicsSubtitle"
+        );
+
+
+    const search =
+        document.getElementById(
+            "participantSearch"
+        );
+
+
+    if (!view || !title) {
+        return;
+    }
+
+
+    title.textContent =
+        `Themen von ${name}`;
+
+
+    const total =
+        presentations.filter(
+            item => item.name === name
+        ).length;
+
+
+    subtitle.textContent =
+        `${total} ${total === 1 ? "Thema" : "Themen"} von ${name}`;
+
+
+    if (search) {
+        search.value = "";
+    }
+
+
+    document
+        .querySelectorAll(".participant-filter")
+        .forEach(button => {
+
+            button.classList.remove("active");
+
+            if (
+                button.dataset.participantFilter ===
+                "Alle"
+            ) {
+                button.classList.add("active");
+            }
+
+        });
+
+
+    view.classList.remove("hidden");
+
+
+    renderParticipantTopics();
+
+
+    view.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+}
+
+
+function renderParticipantTopics() {
+
+    if (!selectedParticipant) {
+        return;
+    }
+
+
+    const container =
+        document.getElementById(
+            "participantPresentationsGrid"
+        );
+
+
+    const empty =
+        document.getElementById(
+            "participantEmptyState"
+        );
+
+
+    const searchInput =
+        document.getElementById(
+            "participantSearch"
+        );
+
+
+    const searchTerm =
+        searchInput
+            ? searchInput.value
+                .trim()
+                .toLowerCase()
+            : "";
+
+
+    let items =
+        presentations.filter(item =>
+            item.name === selectedParticipant
+        );
+
+
+    const allCount =
+        items.length;
+
+
+    const finishedCount =
+        items.filter(
+            item => item.status === "Fertig"
+        ).length;
+
+
+    const progressCount =
+        items.filter(
+            item => item.status === "In Arbeit"
+        ).length;
+
+
+    document.getElementById(
+        "participantFilterAllCount"
+    ).textContent =
+        allCount;
+
+
+    document.getElementById(
+        "participantFilterFinishedCount"
+    ).textContent =
+        finishedCount;
+
+
+    document.getElementById(
+        "participantFilterProgressCount"
+    ).textContent =
+        progressCount;
+
+
+    if (participantFilter !== "Alle") {
+
+        items =
+            items.filter(
+                item =>
+                    item.status === participantFilter
+            );
+    }
+
+
+    if (searchTerm) {
+
+        items =
+            items.filter(item => {
+
+                const searchable = [
+                    item.title,
+                    item.text,
+                    item.vocabulary,
+                    item.questions
+                ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .toLowerCase();
+
+
+                return searchable.includes(
+                    searchTerm
+                );
+            });
+    }
+
+
+    if (!items.length) {
+
+        container.innerHTML = "";
+
+        empty.classList.remove("hidden");
+
+        return;
+    }
+
+
+    empty.classList.add("hidden");
+
+
+    container.innerHTML =
+        items
+            .map(createPresentationCard)
+            .join("");
+
+
+    attachPresentationCardEvents(
+        container
+    );
+}
+
+
+/* =========================================
+   PRESENTATION FILTERS
+========================================= */
+
 function renderFilters() {
 
-    const all = presentations.length;
+    const all =
+        presentations.length;
+
 
     const finished =
         presentations.filter(
             item => item.status === "Fertig"
         ).length;
+
 
     const progress =
         presentations.filter(
@@ -297,28 +666,48 @@ function renderFilters() {
         ).length;
 
 
-    document.getElementById("filterAllCount").textContent =
+    document.getElementById(
+        "filterAllCount"
+    ).textContent =
         all;
 
-    document.getElementById("filterFinishedCount").textContent =
+
+    document.getElementById(
+        "filterFinishedCount"
+    ).textContent =
         finished;
 
-    document.getElementById("filterProgressCount").textContent =
+
+    document.getElementById(
+        "filterProgressCount"
+    ).textContent =
         progress;
 }
 
 
+/* =========================================
+   PRESENTATIONS
+========================================= */
+
 function renderPresentations() {
 
     const container =
-        document.getElementById("presentationsGrid");
+        document.getElementById(
+            "presentationsGrid"
+        );
+
 
     const empty =
-        document.getElementById("emptyState");
+        document.getElementById(
+            "emptyState"
+        );
+
 
     const search =
         document
-            .getElementById("searchInput")
+            .getElementById(
+                "searchInput"
+            )
             .value
             .trim()
             .toLowerCase();
@@ -330,6 +719,7 @@ function renderPresentations() {
             const matchesStatus =
                 currentFilter === "Alle" ||
                 item.status === currentFilter;
+
 
             const searchable = [
                 item.name,
@@ -348,7 +738,10 @@ function renderPresentations() {
                 searchable.includes(search);
 
 
-            return matchesStatus && matchesSearch;
+            return (
+                matchesStatus &&
+                matchesSearch
+            );
         });
 
 
@@ -356,91 +749,122 @@ function renderPresentations() {
 
         container.innerHTML = "";
 
-        empty.classList.remove("hidden");
+        empty.classList.remove(
+            "hidden"
+        );
 
         return;
     }
 
 
-    empty.classList.add("hidden");
+    empty.classList.add(
+        "hidden"
+    );
 
 
     container.innerHTML =
         filtered
-            .map(item => {
-
-                const statusClass =
-                    item.status === "Fertig"
-                        ? "finished"
-                        : "progress";
-
-
-                const preview =
-                    item.text
-                        ? item.text.replace(/\s+/g, " ").trim()
-                        : "";
-
-
-                const vocabularyCount =
-                    splitLines(item.vocabulary).length;
-
-                const questionCount =
-                    splitLines(item.questions).length;
-
-
-                return `
-                    <article
-                        class="presentation-card"
-                        data-id="${item.id}"
-                    >
-
-                        <div class="card-top">
-
-                            <span class="status-badge ${statusClass}">
-                                ${escapeHtml(item.status)}
-                            </span>
-
-                            <span class="card-author">
-                                ${escapeHtml(item.name)}
-                            </span>
-
-                        </div>
-
-
-                        <h3 class="card-title">
-                            ${escapeHtml(item.title)}
-                        </h3>
-
-
-                        <p class="card-preview">
-                            ${escapeHtml(preview)}
-                        </p>
-
-
-                        <div class="card-bottom">
-
-                            <div class="card-info">
-                                ${vocabularyCount}
-                                Wörter
-                                ·
-                                ${questionCount}
-                                Fragen
-                            </div>
-
-                            <button
-                                class="card-open"
-                                data-open-id="${item.id}"
-                            >
-                                Öffnen →
-                            </button>
-
-                        </div>
-
-                    </article>
-                `;
-            })
+            .map(createPresentationCard)
             .join("");
 
+
+    attachPresentationCardEvents(
+        container
+    );
+}
+
+
+/* =========================================
+   PRESENTATION CARD
+========================================= */
+
+function createPresentationCard(item) {
+
+    const statusClass =
+        item.status === "Fertig"
+            ? "finished"
+            : "progress";
+
+
+    const preview =
+        item.text
+            ? item.text
+                .replace(/\s+/g, " ")
+                .trim()
+            : "";
+
+
+    const vocabularyCount =
+        splitLines(
+            item.vocabulary
+        ).length;
+
+
+    const questionCount =
+        splitLines(
+            item.questions
+        ).length;
+
+
+    return `
+        <article
+            class="presentation-card"
+            data-id="${escapeHtml(item.id)}"
+        >
+
+            <div class="card-top">
+
+                <span
+                    class="status-badge ${statusClass}"
+                >
+                    ${escapeHtml(item.status)}
+                </span>
+
+                <span class="card-author">
+                    ${escapeHtml(item.name)}
+                </span>
+
+            </div>
+
+
+            <h3 class="card-title">
+                ${escapeHtml(item.title)}
+            </h3>
+
+
+            <p class="card-preview">
+                ${escapeHtml(preview)}
+            </p>
+
+
+            <div class="card-bottom">
+
+                <div class="card-info">
+                    ${vocabularyCount}
+                    Wörter
+                    ·
+                    ${questionCount}
+                    Fragen
+                </div>
+
+
+                <button
+                    class="card-open"
+                    data-open-id="${escapeHtml(item.id)}"
+                >
+                    Öffnen →
+                </button>
+
+            </div>
+
+        </article>
+    `;
+}
+
+
+function attachPresentationCardEvents(
+    container
+) {
 
     container
         .querySelectorAll("[data-open-id]")
@@ -467,11 +891,14 @@ function renderPresentations() {
             card.addEventListener(
                 "click",
                 () => {
+
                     openPresentation(
                         card.dataset.id
                     );
+
                 }
             );
+
         });
 }
 
@@ -487,30 +914,49 @@ function openPresentation(id) {
             item => item.id === id
         );
 
-    if (index === -1) return;
 
-    currentPresentationIndex = index;
+    if (index === -1) {
+        return;
+    }
+
+
+    currentPresentationIndex =
+        index;
+
 
     renderReader();
 
+
     document
         .getElementById("viewModal")
-        .classList.remove("hidden");
+        .classList.remove(
+            "hidden"
+        );
 }
 
 
 function renderReader() {
 
     const item =
-        presentations[currentPresentationIndex];
+        presentations[
+            currentPresentationIndex
+        ];
 
-    if (!item) return;
+
+    if (!item) {
+        return;
+    }
 
 
-    document.getElementById("readerStatus").textContent =
+    document.getElementById(
+        "readerStatus"
+    ).textContent =
         item.status;
 
-    document.getElementById("readerStatus").className =
+
+    document.getElementById(
+        "readerStatus"
+    ).className =
         `status-badge ${
             item.status === "Fertig"
                 ? "finished"
@@ -518,27 +964,43 @@ function renderReader() {
         }`;
 
 
-    document.getElementById("readerTitle").textContent =
+    document.getElementById(
+        "readerTitle"
+    ).textContent =
         item.title;
 
 
-    document.getElementById("readerAuthor").textContent =
+    document.getElementById(
+        "readerAuthor"
+    ).textContent =
         `von ${item.name}`;
 
 
-    document.getElementById("readerText").textContent =
+    document.getElementById(
+        "readerText"
+    ).textContent =
         item.text;
 
 
-    renderVocabulary(item.vocabulary);
-    renderQuestions(item.questions);
+    renderVocabulary(
+        item.vocabulary
+    );
 
 
-    document.getElementById("previousBtn").disabled =
+    renderQuestions(
+        item.questions
+    );
+
+
+    document.getElementById(
+        "previousBtn"
+    ).disabled =
         currentPresentationIndex <= 0;
 
 
-    document.getElementById("nextBtn").disabled =
+    document.getElementById(
+        "nextBtn"
+    ).disabled =
         currentPresentationIndex >=
         presentations.length - 1;
 }
@@ -551,21 +1013,30 @@ function renderVocabulary(value) {
             "readerVocabularySection"
         );
 
+
     const container =
         document.getElementById(
             "readerVocabulary"
         );
+
 
     const items =
         splitLines(value);
 
 
     if (!items.length) {
-        section.classList.add("hidden");
+
+        section.classList.add(
+            "hidden"
+        );
+
         return;
     }
 
-    section.classList.remove("hidden");
+
+    section.classList.remove(
+        "hidden"
+    );
 
 
     container.innerHTML =
@@ -584,21 +1055,30 @@ function renderQuestions(value) {
             "readerQuestionsSection"
         );
 
+
     const container =
         document.getElementById(
             "readerQuestions"
         );
+
 
     const items =
         splitLines(value);
 
 
     if (!items.length) {
-        section.classList.add("hidden");
+
+        section.classList.add(
+            "hidden"
+        );
+
         return;
     }
 
-    section.classList.remove("hidden");
+
+    section.classList.remove(
+        "hidden"
+    );
 
 
     container.innerHTML =
@@ -618,45 +1098,81 @@ function openAddModal() {
 
     resetForm();
 
-    document.getElementById("formEyebrow").textContent =
+
+    document.getElementById(
+        "formEyebrow"
+    ).textContent =
         "NEUE PRÄSENTATION";
 
-    document.getElementById("formTitle").textContent =
+
+    document.getElementById(
+        "formTitle"
+    ).textContent =
         "Thema hinzufügen";
 
-    document.getElementById("savePresentationBtn").textContent =
+
+    document.getElementById(
+        "savePresentationBtn"
+    ).textContent =
         "Speichern";
 
+
     document
-        .getElementById("editModal")
-        .classList.remove("hidden");
+        .getElementById(
+            "editModal"
+        )
+        .classList.remove(
+            "hidden"
+        );
 }
 
 
 function openEditModal() {
 
     const item =
-        presentations[currentPresentationIndex];
+        presentations[
+            currentPresentationIndex
+        ];
 
-    if (!item) return;
+
+    if (!item) {
+        return;
+    }
 
 
-    document.getElementById("presentationId").value =
+    document.getElementById(
+        "presentationId"
+    ).value =
         item.id;
 
-    document.getElementById("nameInput").value =
+
+    document.getElementById(
+        "nameInput"
+    ).value =
         item.name || "";
 
-    document.getElementById("titleInput").value =
+
+    document.getElementById(
+        "titleInput"
+    ).value =
         item.title || "";
 
-    document.getElementById("textInput").value =
+
+    document.getElementById(
+        "textInput"
+    ).value =
         item.text || "";
 
-    document.getElementById("vocabularyInput").value =
+
+    document.getElementById(
+        "vocabularyInput"
+    ).value =
         item.vocabulary || "";
 
-    document.getElementById("questionsInput").value =
+
+    document.getElementById(
+        "questionsInput"
+    ).value =
         item.questions || "";
 
 
@@ -665,41 +1181,64 @@ function openEditModal() {
             `input[name="status"][value="${CSS.escape(item.status)}"]`
         );
 
+
     if (statusRadio) {
         statusRadio.checked = true;
     }
 
 
-    document.getElementById("formEyebrow").textContent =
+    document.getElementById(
+        "formEyebrow"
+    ).textContent =
         "PRÄSENTATION BEARBEITEN";
 
-    document.getElementById("formTitle").textContent =
+
+    document.getElementById(
+        "formTitle"
+    ).textContent =
         "Thema bearbeiten";
 
-    document.getElementById("savePresentationBtn").textContent =
+
+    document.getElementById(
+        "savePresentationBtn"
+    ).textContent =
         "Änderungen speichern";
 
 
-    closeModal("viewModal");
+    closeModal(
+        "viewModal"
+    );
+
 
     document
-        .getElementById("editModal")
-        .classList.remove("hidden");
+        .getElementById(
+            "editModal"
+        )
+        .classList.remove(
+            "hidden"
+        );
 }
 
 
 function resetForm() {
 
     document
-        .getElementById("presentationForm")
+        .getElementById(
+            "presentationForm"
+        )
         .reset();
 
-    document.getElementById("presentationId").value =
+
+    document.getElementById(
+        "presentationId"
+    ).value =
         "";
+
 
     document.querySelector(
         'input[name="status"][value="Fertig"]'
-    ).checked = true;
+    ).checked =
+        true;
 }
 
 
@@ -709,49 +1248,65 @@ async function savePresentation(event) {
 
 
     if (!supabaseClient) {
-        showToast("Supabase ist nicht verbunden.");
+
+        showToast(
+            "Supabase ist nicht verbunden."
+        );
+
         return;
     }
 
 
     const id =
         document
-            .getElementById("presentationId")
+            .getElementById(
+                "presentationId"
+            )
             .value
             .trim();
 
 
     const name =
         document
-            .getElementById("nameInput")
+            .getElementById(
+                "nameInput"
+            )
             .value
             .trim();
 
 
     const title =
         document
-            .getElementById("titleInput")
+            .getElementById(
+                "titleInput"
+            )
             .value
             .trim();
 
 
     const text =
         document
-            .getElementById("textInput")
+            .getElementById(
+                "textInput"
+            )
             .value
             .trim();
 
 
     const vocabulary =
         document
-            .getElementById("vocabularyInput")
+            .getElementById(
+                "vocabularyInput"
+            )
             .value
             .trim();
 
 
     const questions =
         document
-            .getElementById("questionsInput")
+            .getElementById(
+                "questionsInput"
+            )
             .value
             .trim();
 
@@ -764,7 +1319,12 @@ async function savePresentation(event) {
             .value;
 
 
-    if (!name || !title || !text) {
+    if (
+        !name ||
+        !title ||
+        !text
+    ) {
+
         showToast(
             "Bitte Teilnehmer, Thema und Präsentation ausfüllen."
         );
@@ -778,9 +1338,11 @@ async function savePresentation(event) {
             "savePresentationBtn"
         );
 
+
     button.disabled = true;
 
-    button.textContent = "Speichern...";
+    button.textContent =
+        "Speichern...";
 
 
     try {
@@ -803,7 +1365,9 @@ async function savePresentation(event) {
                     })
                     .eq("id", id);
 
-            error = result.error;
+
+            error =
+                result.error;
 
         } else {
 
@@ -819,7 +1383,9 @@ async function savePresentation(event) {
                         status
                     });
 
-            error = result.error;
+
+            error =
+                result.error;
         }
 
 
@@ -828,9 +1394,13 @@ async function savePresentation(event) {
         }
 
 
-        closeModal("editModal");
+        closeModal(
+            "editModal"
+        );
+
 
         await loadPresentations();
+
 
         showToast(
             id
@@ -843,13 +1413,16 @@ async function savePresentation(event) {
 
         console.error(error);
 
+
         showToast(
             "Speichern fehlgeschlagen."
         );
 
+
     } finally {
 
         button.disabled = false;
+
 
         button.textContent =
             id
@@ -866,9 +1439,14 @@ async function savePresentation(event) {
 async function deleteCurrentPresentation() {
 
     const item =
-        presentations[currentPresentationIndex];
+        presentations[
+            currentPresentationIndex
+        ];
 
-    if (!item) return;
+
+    if (!item) {
+        return;
+    }
 
 
     const confirmed =
@@ -877,7 +1455,9 @@ async function deleteCurrentPresentation() {
         );
 
 
-    if (!confirmed) return;
+    if (!confirmed) {
+        return;
+    }
 
 
     try {
@@ -895,9 +1475,13 @@ async function deleteCurrentPresentation() {
         }
 
 
-        closeModal("viewModal");
+        closeModal(
+            "viewModal"
+        );
+
 
         await loadPresentations();
+
 
         showToast(
             "Präsentation wurde gelöscht."
@@ -907,6 +1491,7 @@ async function deleteCurrentPresentation() {
     } catch (error) {
 
         console.error(error);
+
 
         showToast(
             "Löschen fehlgeschlagen."
@@ -922,6 +1507,7 @@ async function deleteCurrentPresentation() {
 function openRandomPresentation() {
 
     if (!presentations.length) {
+
         showToast(
             "Es gibt noch keine Präsentationen."
         );
@@ -952,7 +1538,11 @@ function scrollToSection(id) {
     const element =
         document.getElementById(id);
 
-    if (!element) return;
+
+    if (!element) {
+        return;
+    }
+
 
     element.scrollIntoView({
         behavior: "smooth",
@@ -968,8 +1558,13 @@ function scrollToSection(id) {
 function openTimer() {
 
     document
-        .getElementById("timerOverlay")
-        .classList.remove("hidden");
+        .getElementById(
+            "timerOverlay"
+        )
+        .classList.remove(
+            "hidden"
+        );
+
 
     resetTimer();
 }
@@ -979,16 +1574,23 @@ function closeTimer() {
 
     stopTimer();
 
+
     document
-        .getElementById("timerOverlay")
-        .classList.add("hidden");
+        .getElementById(
+            "timerOverlay"
+        )
+        .classList.add(
+            "hidden"
+        );
 }
 
 
 function startTimer() {
 
     if (timerRunning) {
+
         stopTimer();
+
         return;
     }
 
@@ -1000,7 +1602,10 @@ function startTimer() {
 
     timerRunning = true;
 
-    document.getElementById("timerStartBtn").textContent =
+
+    document.getElementById(
+        "timerStartBtn"
+    ).textContent =
         "Pause";
 
 
@@ -1009,12 +1614,14 @@ function startTimer() {
 
             timerSeconds--;
 
+
             updateTimerDisplay();
 
 
             if (timerSeconds <= 0) {
 
                 stopTimer();
+
 
                 showToast(
                     "3 Minuten sind vorbei."
@@ -1029,12 +1636,24 @@ function stopTimer() {
 
     timerRunning = false;
 
-    clearInterval(timerInterval);
+
+    clearInterval(
+        timerInterval
+    );
+
 
     timerInterval = null;
 
-    document.getElementById("timerStartBtn").textContent =
-        "Start";
+
+    const button =
+        document.getElementById(
+            "timerStartBtn"
+        );
+
+
+    if (button) {
+        button.textContent = "Start";
+    }
 }
 
 
@@ -1042,7 +1661,9 @@ function resetTimer() {
 
     stopTimer();
 
+
     timerSeconds = 180;
+
 
     updateTimerDisplay();
 }
@@ -1055,11 +1676,14 @@ function updateTimerDisplay() {
             timerSeconds / 60
         );
 
+
     const seconds =
         timerSeconds % 60;
 
 
-    document.getElementById("timerDisplay").textContent =
+    document.getElementById(
+        "timerDisplay"
+    ).textContent =
         `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
@@ -1070,16 +1694,31 @@ function updateTimerDisplay() {
 
 function closeModal(id) {
 
-    document
-        .getElementById(id)
-        .classList.add("hidden");
+    const modal =
+        document.getElementById(id);
+
+
+    if (!modal) {
+        return;
+    }
+
+
+    modal.classList.add(
+        "hidden"
+    );
 }
 
 
 function closeAllModals() {
 
-    closeModal("viewModal");
-    closeModal("editModal");
+    closeModal(
+        "viewModal"
+    );
+
+    closeModal(
+        "editModal"
+    );
+
     closeTimer();
 }
 
@@ -1126,7 +1765,10 @@ function setupEvents() {
         .getElementById("startLearningBtn")
         .addEventListener(
             "click",
-            () => scrollToSection("presentations")
+            () =>
+                scrollToSection(
+                    "presentations"
+                )
         );
 
 
@@ -1137,6 +1779,7 @@ function setupEvents() {
             event => {
 
                 event.preventDefault();
+
 
                 window.scrollTo({
                     top: 0,
@@ -1157,8 +1800,10 @@ function setupEvents() {
                     scrollToSection(
                         button.dataset.scroll
                     );
+
                 }
             );
+
         });
 
 
@@ -1173,21 +1818,31 @@ function setupEvents() {
                     closeModal(
                         button.dataset.close
                     );
+
                 }
             );
+
         });
 
 
+    /* Main search */
+
     document
-        .getElementById("searchInput")
+        .getElementById(
+            "searchInput"
+        )
         .addEventListener(
             "input",
             renderPresentations
         );
 
 
+    /* Main filters */
+
     document
-        .querySelectorAll(".filter-btn")
+        .querySelectorAll(
+            ".filters:not(.participant-topics .filters) .filter-btn"
+        )
         .forEach(button => {
 
             button.addEventListener(
@@ -1199,62 +1854,178 @@ function setupEvents() {
 
 
                     document
-                        .querySelectorAll(".filter-btn")
+                        .querySelectorAll(
+                            "#presentations .filter-btn"
+                        )
                         .forEach(item =>
-                            item.classList.remove("active")
+                            item.classList.remove(
+                                "active"
+                            )
                         );
 
 
-                    button.classList.add("active");
+                    button.classList.add(
+                        "active"
+                    );
+
 
                     renderPresentations();
+
                 }
             );
+
         });
 
 
+    /* Participant search */
+
     document
-        .getElementById("presentationForm")
+        .getElementById(
+            "participantSearch"
+        )
+        .addEventListener(
+            "input",
+            renderParticipantTopics
+        );
+
+
+    /* Participant filters */
+
+    document
+        .querySelectorAll(
+            ".participant-filter"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    participantFilter =
+                        button.dataset.participantFilter;
+
+
+                    document
+                        .querySelectorAll(
+                            ".participant-filter"
+                        )
+                        .forEach(item =>
+                            item.classList.remove(
+                                "active"
+                            )
+                        );
+
+
+                    button.classList.add(
+                        "active"
+                    );
+
+
+                    renderParticipantTopics();
+
+                }
+            );
+
+        });
+
+
+    /* All presentations */
+
+    document
+        .getElementById(
+            "showAllPresentationsBtn"
+        )
+        .addEventListener(
+            "click",
+            () => {
+
+                selectedParticipant = null;
+
+                document
+                    .getElementById(
+                        "participantTopics"
+                    )
+                    .classList.add(
+                        "hidden"
+                    );
+
+
+                scrollToSection(
+                    "presentations"
+                );
+
+            }
+        );
+
+
+    /* Form */
+
+    document
+        .getElementById(
+            "presentationForm"
+        )
         .addEventListener(
             "submit",
             savePresentation
         );
 
 
+    /* Edit */
+
     document
-        .getElementById("editPresentationBtn")
+        .getElementById(
+            "editPresentationBtn"
+        )
         .addEventListener(
             "click",
             openEditModal
         );
 
 
+    /* Delete */
+
     document
-        .getElementById("deletePresentationBtn")
+        .getElementById(
+            "deletePresentationBtn"
+        )
         .addEventListener(
             "click",
             deleteCurrentPresentation
         );
 
 
+    /* Previous */
+
     document
-        .getElementById("previousBtn")
+        .getElementById(
+            "previousBtn"
+        )
         .addEventListener(
             "click",
             () => {
 
-                if (currentPresentationIndex <= 0)
+                if (
+                    currentPresentationIndex <= 0
+                ) {
                     return;
+                }
+
 
                 currentPresentationIndex--;
 
+
                 renderReader();
+
             }
         );
 
 
+    /* Next */
+
     document
-        .getElementById("nextBtn")
+        .getElementById(
+            "nextBtn"
+        )
         .addEventListener(
             "click",
             () => {
@@ -1266,15 +2037,22 @@ function setupEvents() {
                     return;
                 }
 
+
                 currentPresentationIndex++;
 
+
                 renderReader();
+
             }
         );
 
 
+    /* Timer */
+
     document
-        .getElementById("practiceBtn")
+        .getElementById(
+            "practiceBtn"
+        )
         .addEventListener(
             "click",
             openTimer
@@ -1282,7 +2060,9 @@ function setupEvents() {
 
 
     document
-        .getElementById("closeTimerBtn")
+        .getElementById(
+            "closeTimerBtn"
+        )
         .addEventListener(
             "click",
             closeTimer
@@ -1290,7 +2070,9 @@ function setupEvents() {
 
 
     document
-        .getElementById("timerStartBtn")
+        .getElementById(
+            "timerStartBtn"
+        )
         .addEventListener(
             "click",
             startTimer
@@ -1298,57 +2080,83 @@ function setupEvents() {
 
 
     document
-        .getElementById("timerResetBtn")
+        .getElementById(
+            "timerResetBtn"
+        )
         .addEventListener(
             "click",
             resetTimer
         );
 
 
+    /* Close reader by clicking outside */
+
     document
-        .getElementById("viewModal")
+        .getElementById(
+            "viewModal"
+        )
         .addEventListener(
             "click",
             event => {
 
                 if (
-                    event.target.id === "viewModal"
+                    event.target.id ===
+                    "viewModal"
                 ) {
-                    closeModal("viewModal");
+
+                    closeModal(
+                        "viewModal"
+                    );
                 }
             }
         );
 
 
+    /* Close edit modal */
+
     document
-        .getElementById("editModal")
+        .getElementById(
+            "editModal"
+        )
         .addEventListener(
             "click",
             event => {
 
                 if (
-                    event.target.id === "editModal"
+                    event.target.id ===
+                    "editModal"
                 ) {
-                    closeModal("editModal");
+
+                    closeModal(
+                        "editModal"
+                    );
                 }
             }
         );
 
 
+    /* Close timer */
+
     document
-        .getElementById("timerOverlay")
+        .getElementById(
+            "timerOverlay"
+        )
         .addEventListener(
             "click",
             event => {
 
                 if (
-                    event.target.id === "timerOverlay"
+                    event.target.id ===
+                    "timerOverlay"
                 ) {
+
                     closeTimer();
                 }
             }
         );
 
+
+    /* Keyboard */
 
     document.addEventListener(
         "keydown",
@@ -1362,15 +2170,22 @@ function setupEvents() {
 
                 event.preventDefault();
 
+
                 document
-                    .getElementById("searchInput")
+                    .getElementById(
+                        "searchInput"
+                    )
                     .focus();
             }
 
 
-            if (event.key === "Escape") {
+            if (
+                event.key === "Escape"
+            ) {
+
                 closeAllModals();
             }
+
         }
     );
 }
@@ -1382,7 +2197,10 @@ function setupEvents() {
 
 function splitLines(value) {
 
-    if (!value) return [];
+    if (!value) {
+        return [];
+    }
+
 
     return value
         .split("\n")
@@ -1393,16 +2211,24 @@ function splitLines(value) {
 
 function getInitials(name) {
 
-    if (!name) return "?";
+    if (!name) {
+        return "?";
+    }
+
 
     const parts =
-        name.trim().split(/\s+/);
+        name
+            .trim()
+            .split(/\s+/);
+
 
     if (parts.length === 1) {
+
         return parts[0]
             .slice(0, 2)
             .toUpperCase();
     }
+
 
     return (
         parts[0][0] +
@@ -1413,38 +2239,73 @@ function getInitials(name) {
 
 function escapeHtml(value) {
 
-    if (value === null || value === undefined) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
         return "";
     }
 
+
     return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 }
 
 
+/* =========================================
+   TOAST
+========================================= */
+
 let toastTimeout = null;
+
 
 function showToast(message) {
 
     const toast =
-        document.getElementById("toast");
-
-    toast.textContent = message;
-
-    toast.classList.remove("hidden");
+        document.getElementById(
+            "toast"
+        );
 
 
-    clearTimeout(toastTimeout);
+    toast.textContent =
+        message;
+
+
+    toast.classList.remove(
+        "hidden"
+    );
+
+
+    clearTimeout(
+        toastTimeout
+    );
 
 
     toastTimeout =
         setTimeout(() => {
 
-            toast.classList.add("hidden");
+            toast.classList.add(
+                "hidden"
+            );
 
         }, 3500);
 }
